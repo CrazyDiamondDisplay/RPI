@@ -62,7 +62,19 @@ public class RPIServer extends WebSocketServer {
 
     @Override
     public void onStart() {
-
+        String[] args = new String[] {"/bin/bash", "-c", "hostname -I"};
+        try {
+            Process proc = new ProcessBuilder(args).start();
+            InputStream is = proc.getInputStream();
+            BufferedReader read = new BufferedReader(new InputStreamReader(is));
+            String line;
+            while ((line = read.readLine()) != null){
+                System.out.println(line + "hola");
+            }
+            read.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     public void runServerBucle () {
         boolean running = true;
