@@ -1,4 +1,4 @@
 Per executar:
 cd server_rpi
-.\run.ps1 com.websockets.Main
+./run.sh com.websockets.Main
 ```
