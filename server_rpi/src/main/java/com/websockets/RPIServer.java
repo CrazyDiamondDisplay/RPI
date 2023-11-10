@@ -2,6 +2,7 @@ package com.websockets;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import org.java_websocket.WebSocket;
@@ -21,6 +22,19 @@ public class RPIServer extends WebSocketServer {
         String clientId = getConnectionId(conn);
         String host = conn.getRemoteSocketAddress().getAddress().getHostAddress();
         System.out.println("New client (" + clientId + "): " + host);
+        String[] args = new String[] {"/bin/bash", "-c", "hostname -I"};
+        try {
+            Process proc = new ProcessBuilder(args).start();
+            InputStream is = proc.getInputStream();
+            BufferedReader read = new BufferedReader(new InputStreamReader(is));
+            String line;
+            while ((line = read.readLine()) != null){
+                System.out.println(line);
+            }
+            read.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private String getConnectionId(WebSocket conn) {
