@@ -9,9 +9,14 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import org.json.JSONObject;
+import java.util.ArrayList;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class RPIServer extends WebSocketServer {
     static BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+    ArrayList<String> connections = new ArrayList<>();
+    Process ipProcess;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public RPIServer (int port) {
         super(new InetSocketAddress(port));
@@ -22,16 +27,24 @@ public class RPIServer extends WebSocketServer {
         String clientId = getConnectionId(conn);
         String host = conn.getRemoteSocketAddress().getAddress().getHostAddress();
         System.out.println("New client (" + clientId + "): " + host);
-        String[] args = new String[] {"/bin/bash", "-c", "hostname -I"};
-        try {
-            Process proc = new ProcessBuilder(args).start();
-            InputStream is = proc.getInputStream();
-            BufferedReader read = new BufferedReader(new InputStreamReader(is));
-            String line;
-            while ((line = read.readLine()) != null){
-                System.out.println(line);
+        String userAgent = clientHandshake.getFieldValue("User-Agent");
+        if (userAgent != null) {
+            if (userAgent.contains("dart")) {
+                clientId = clientId + " desde Flutter";
+            } else if (userAgent.contains("Android")) {
+                clientId = clientId + " desde Android";
             }
-            read.close();
+        }
+        connections.add(clientId);
+        System.out.println(connections.size());
+        if (ipProcess != null) {
+            ipProcess.destroy();
+        }
+        String[] args2 = new String[] {"/home/ieti/bin/text-scroller", "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf", "--led-cols=64", "--led-rows=64", "--led-slowdown-gpio=4", "--led-no-hardware-pulse", "Clientes conectados"};
+        try {
+            ipProcess = new ProcessBuilder(args2).start();
+            String jsonData = objectMapper.writeValueAsString(connections);
+            conn.send(jsonData);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -45,13 +58,39 @@ public class RPIServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int i, String s, boolean b) {
-        String clientId = getConnectionId(conn);
-        System.out.println("Client disconnected '" + clientId + "'");
+        try {
+            if (ipProcess != null) {
+                ipProcess.destroy();
+            }
+            String line = "192.168.0.25";
+            String[] args2 = new String[] {"/home/ieti/bin/text-scroller", "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf", "--led-cols=64", "--led-rows=64", "--led-slowdown-gpio=4", "--led-no-hardware-pulse", "192.168.0.25"};
+            ipProcess = new ProcessBuilder(args2).start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
-    public void onMessage(WebSocket conn, String s) {
+    public void onMessage(WebSocket conn, String message) {
+        String[] args2 = new String[] {
+            "/home/ieti/bin/text-scroller",
+            "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf",
+            "--led-cols=64", "--led-rows=64",
+            "--led-slowdown-gpio=4", "--led-no-hardware-pulse",
+            message
+        };
 
+    try {
+
+        if (ipProcess != null) {
+            ipProcess.destroy();
+        }
+
+        // Start a new process with updated args2
+        ipProcess = new ProcessBuilder(args2).start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -62,16 +101,10 @@ public class RPIServer extends WebSocketServer {
 
     @Override
     public void onStart() {
-        String[] args = new String[] {"/bin/bash", "-c", "hostname -I"};
         try {
-            Process proc = new ProcessBuilder(args).start();
-            InputStream is = proc.getInputStream();
-            BufferedReader read = new BufferedReader(new InputStreamReader(is));
-            String line;
-            while ((line = read.readLine()) != null){
-                System.out.println(line + "hola");
-            }
-            read.close();
+            String line = "192.168.0.25";
+            String[] args2 = new String[] {"/home/ieti/bin/text-scroller", "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf", "--led-cols=64", "--led-rows=64", "--led-slowdown-gpio=4", "--led-no-hardware-pulse", line};
+            ipProcess = new ProcessBuilder(args2).start();
         } catch (IOException e) {
             e.printStackTrace();
         }
