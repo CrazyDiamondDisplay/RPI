@@ -14,7 +14,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class RPIServer extends WebSocketServer {
     static BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-    ArrayList<String> connections = new ArrayList<>();
+    ArrayList<ArrayList> connections = new ArrayList<>();
+    ArrayList<String> flutterClients = new ArrayList<>();
+    ArrayList<String> androidClients = new ArrayList<>();
     Process ipProcess;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -28,15 +30,16 @@ public class RPIServer extends WebSocketServer {
         String host = conn.getRemoteSocketAddress().getAddress().getHostAddress();
         System.out.println("New client (" + clientId + "): " + host);
         String userAgent = clientHandshake.getFieldValue("User-Agent");
-        if (userAgent != null) {
-            if (userAgent.contains("dart")) {
-                clientId = clientId + " desde Flutter";
-            } else if (userAgent.contains("Android")) {
-                clientId = clientId + " desde Android";
+        System.out.println(userAgent);
+        if (!doesClientExist(clientId)) {
+            if (userAgent != null) {
+                if (userAgent.contains("dart")) {
+                    flutterClients.add(clientId);
+                } else {
+                    androidClients.add(clientId);
+                }
             }
         }
-        connections.add(clientId);
-        System.out.println(connections.size());
         if (ipProcess != null) {
             ipProcess.destroy();
         }
@@ -59,12 +62,21 @@ public class RPIServer extends WebSocketServer {
     @Override
     public void onClose(WebSocket conn, int i, String s, boolean b) {
         try {
+            String clientId = getConnectionId(conn);
+            if (doesClientExist(clientId)) {
+                if (flutterClients.contains(clientId)) {
+                    flutterClients.remove(clientId);
+                }else{
+                    androidClients.remove(clientId);
+                }
+            }
             if (ipProcess != null) {
                 ipProcess.destroy();
             }
             String line = "192.168.0.25";
             String[] args2 = new String[] {"/home/ieti/bin/text-scroller", "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf", "--led-cols=64", "--led-rows=64", "--led-slowdown-gpio=4", "--led-no-hardware-pulse", "192.168.0.25"};
             ipProcess = new ProcessBuilder(args2).start();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -102,6 +114,8 @@ public class RPIServer extends WebSocketServer {
     @Override
     public void onStart() {
         try {
+            connections.add(flutterClients);
+            connections.add(androidClients);
             String line = "192.168.0.25";
             String[] args2 = new String[] {"/home/ieti/bin/text-scroller", "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf", "--led-cols=64", "--led-rows=64", "--led-slowdown-gpio=4", "--led-no-hardware-pulse", line};
             ipProcess = new ProcessBuilder(args2).start();
@@ -126,5 +140,8 @@ public class RPIServer extends WebSocketServer {
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
+    }
+    public boolean doesClientExist(String clientId) {
+        return flutterClients.contains(clientId) || androidClients.contains(clientId);
     }
 }
