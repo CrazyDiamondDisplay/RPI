@@ -10,6 +10,8 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import org.json.JSONObject;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class RPIServer extends WebSocketServer {
@@ -20,12 +22,19 @@ public class RPIServer extends WebSocketServer {
     Process ipProcess;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    Map<String, String> userPasswords = new HashMap<>();
+
+    
+
     public RPIServer (int port) {
         super(new InetSocketAddress(port));
     }
 
     @Override
     public void onOpen(WebSocket conn, ClientHandshake clientHandshake) {
+        userPasswords.put("admin", "admin");
+        userPasswords.put("pablo", "1");
+        userPasswords.put("alex", "1");
         String clientId = getConnectionId(conn);
         String host = conn.getRemoteSocketAddress().getAddress().getHostAddress();
         System.out.println("New client (" + clientId + "): " + host);
@@ -84,6 +93,18 @@ public class RPIServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, String message) {
+        JSONObject jsonObject = new JSONObject(message);
+
+        if("login".equals(jsonObject.getString("type"))){
+            if(userPasswords.containsKey(jsonObject.getString("user"))){
+                if(userPasswords.get(jsonObject.getString("user")).equals(jsonObject.getString("pass"))){
+                    conn.send("{\"type\": \"login\", \"valid\":\"true\"}");
+                }else{
+                    conn.send("{\"type\": \"login\", \"valid\":\"false\"}");
+                }
+            }
+        }
+
         String[] args2 = new String[] {
             "/home/ieti/bin/text-scroller",
             "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf",
@@ -143,5 +164,9 @@ public class RPIServer extends WebSocketServer {
     }
     public boolean doesClientExist(String clientId) {
         return flutterClients.contains(clientId) || androidClients.contains(clientId);
+    }
+
+    public void login(JSONObject data){
+        
     }
 }
