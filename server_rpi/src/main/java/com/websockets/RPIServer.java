@@ -94,7 +94,7 @@ public class RPIServer extends WebSocketServer {
     @Override
     public void onMessage(WebSocket conn, String message) {
         JSONObject jsonObject = new JSONObject(message);
-
+        String[] args2 = null;
         if("login".equals(jsonObject.getString("type"))){
             if(userPasswords.containsKey(jsonObject.getString("user"))){
                 if(userPasswords.get(jsonObject.getString("user")).equals(jsonObject.getString("pass"))){
@@ -104,14 +104,18 @@ public class RPIServer extends WebSocketServer {
                 }
             }
         }
+        else if("mssg".equals(jsonObject.getString("type"))){
+            args2 = new String[] {
+                "/home/ieti/bin/text-scroller",
+                "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf",
+                "--led-cols=64", "--led-rows=64",
+                "--led-slowdown-gpio=4", "--led-no-hardware-pulse",
+                jsonObject.getString("text")
+            };
+        }
 
-        String[] args2 = new String[] {
-            "/home/ieti/bin/text-scroller",
-            "-f", "/home/ieti/dev/bitmap-fonts/bitmap/cherry/cherry-10-b.bdf",
-            "--led-cols=64", "--led-rows=64",
-            "--led-slowdown-gpio=4", "--led-no-hardware-pulse",
-            message
-        };
+       
+        
 
     try {
 
