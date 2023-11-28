@@ -13,6 +13,12 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Base64;
 
 public class RPIServer extends WebSocketServer {
     static BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
@@ -72,6 +78,7 @@ public class RPIServer extends WebSocketServer {
     public void onClose(WebSocket conn, int i, String s, boolean b) {
         try {
             String clientId = getConnectionId(conn);
+            System.out.println("ADIOS!");
             if (doesClientExist(clientId)) {
                 if (flutterClients.contains(clientId)) {
                     flutterClients.remove(clientId);
@@ -93,8 +100,10 @@ public class RPIServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, String message) {
+        System.out.println(message);
         JSONObject jsonObject = new JSONObject(message);
         String[] args2 = null;
+        
         if("login".equals(jsonObject.getString("type"))){
             if(userPasswords.containsKey(jsonObject.getString("user"))){
                 if(userPasswords.get(jsonObject.getString("user")).equals(jsonObject.getString("pass"))){
@@ -102,6 +111,8 @@ public class RPIServer extends WebSocketServer {
                 }else{
                     conn.send("{\"type\": \"login\", \"valid\":\"false\"}");
                 }
+            }else{
+                conn.send("{\"type\": \"login\", \"valid\":\"false\"}");
             }
         }
         else if("mssg".equals(jsonObject.getString("type"))){
@@ -112,6 +123,25 @@ public class RPIServer extends WebSocketServer {
                 "--led-slowdown-gpio=4", "--led-no-hardware-pulse",
                 jsonObject.getString("text")
             };
+        }else if("img".equals(jsonObject.getString("type"))){
+            try{
+                String outputPath = "./imagen."+jsonObject.getString("ext");
+
+                byte[] decodedBytes = Base64.getDecoder().decode(jsonObject.getString("image"));
+
+                Path filePath = Path.of(outputPath);
+                Files.write(filePath, decodedBytes, StandardOpenOption.CREATE);
+
+                args2 = new String[]{
+                    "/home/ieti/bin/led-image-viewer",
+                    "-C", "--led-cols=64", "--led-rows=64",
+                    "--led-slowdown-gpio=4", "--led-no-hardware-pulse",
+                    filePath.toString()
+                };
+            } catch (IOException e) {
+                // Manejar la excepción aquí
+                e.printStackTrace(); // O cualquier otro tratamiento que desees
+            }
         }
 
        
