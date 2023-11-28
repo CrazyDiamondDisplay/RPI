@@ -100,7 +100,6 @@ public class RPIServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        System.out.println(message);
         JSONObject jsonObject = new JSONObject(message);
         String[] args2 = null;
         
